@@ -1,3 +1,2 @@
 # people_counter
-Sản phẩm đầu tiên làm ở công ty:
-  Bao gồm lắp 2 cam đi vào ra, xuất video, reset video, gửi API
+The first product made at Halovi Software: ticket counting system on the train: Includes installing 2 cams in and out, exporting original video and algorithm, resetting video, sending API, deleting video by date, saving to USB
