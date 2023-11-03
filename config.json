@@ -1,0 +1,111 @@
+{
+  "_comment": "camera",
+  "camera_config1": [
+    {
+      "IN": "right-left",
+      "OUT": "left-right",
+      "roi": {
+        "new_width": 320,
+        "new_height": 240,
+        "mode": [
+          {
+            "roi_x1": 0,
+            "roi_y1": 270,
+            "roi_x2": 640,
+            "roi_y2": 320
+          },
+          {
+            "roi_x1": 380,
+            "roi_y1": 0,
+            "roi_x2": 480,
+            "roi_y2": 480
+          }
+          
+        ]
+      }
+    },
+    {
+      "IN": "left-right",
+      "OUT": "right-left",
+      "roi": {
+        "new_width": 320,
+        "new_height": 240,
+        "mode": [
+          {
+            "roi_x1": 0,
+            "roi_y1": 270,
+            "roi_x2": 640,
+            "roi_y2": 320
+          },
+          {
+            "roi_x1": 340,
+            "roi_y1": 0,
+            "roi_x2": 440,
+            "roi_y2": 480
+          }
+          
+        ]
+      }
+    }
+  ],
+  
+  "time": {
+    "time_save": 120,
+    "time_delete": 36000000000
+  },
+  "camera_config2": [
+    {
+      "IN": "top-bottom",
+      "OUT": "bottom-top",
+      "roi": {
+        "new_width": 320,
+        "new_height": 240,
+        "mode": [
+          {
+            "roi_x1": 0,
+            "roi_y1": 30,
+            "roi_x2": 320,
+            "roi_y2": 200
+          },
+          {
+            "roi_x1": 170,
+            "roi_y1": 0,
+            "roi_x2": 220,
+            "roi_y2": 240
+          },
+          "comment: giam y1 de nhich len tren"
+          
+        ]
+      }
+    },
+    
+    {
+      "IN": "top-bottom",
+      "OUT": "bottom-top",
+      "roi": {
+        "new_width": 320,
+        "new_height": 240,
+        "mode": [
+          {
+            "roi_x1": 0,
+            "roi_y1": 30,
+            "roi_x2": 320,
+            "roi_y2": 200
+          },
+          {
+            "roi_x1": 225,
+            "roi_y1": 0,
+            "roi_x2": 275,
+            "roi_y2": 240
+          }
+          
+        ]
+      }
+    }
+  ],
+  "timeAPI": {
+    "time_api": 20
+  },
+  "space_threshold": 10
+
+}
