@@ -12,7 +12,7 @@ import datetime
 import pathlib
 import threading
 from mongoFunc import send_requests_interval, increaseIN, increaseOUT
-
+from person_height_estimator import estimate_person_height
 from threading import Thread
 
 output_folder = "output_videos"
@@ -46,7 +46,6 @@ source2 = 1
 # Đường dẫn đến tệp people.pb
 model_path = "people.pb"
 y_diff = 0
-
 
 def detect_objects(queue, source):
     new_width = config["camera_config1"][source]["roi"]["new_width"]
@@ -289,7 +288,7 @@ def track_objects(queue, source, count_mode, camera_id):
                             -1
                         ]  # Tọa độ x của điểm cuối cùng
                         # Xác định ngưỡng (threshold) để loại bỏ các trường hợp nhiễu, bắt đầu từ 0 kết thúc ở 320 mới đếm
-                        threshold = 75  # Có thể điều chỉnh ngưỡng này theo ý muốn
+                        threshold = 25  # Có thể điều chỉnh ngưỡng này theo ý muốn
                         # Tính khoảng cách giữa start_x và end_x
                         distance_x = abs(end_x - start_x)
                         # print(object_id_to_remove,distance_x,end_x,start_x,removed_object_info)
@@ -308,7 +307,7 @@ def track_objects(queue, source, count_mode, camera_id):
                                 direction = "vao" if start_x > end_x else "ra"
                                 # print(f"ID {object_id_to_remove} out frame. Info: {removed_object_info}")
                                 if direction == "ra":
-                                    if end_x > 200:
+                                    if end_x > 120:
                                         left_to_right_count += 1
                                         data_x_out = {
                                             "camera_id": camera_id
@@ -338,7 +337,7 @@ def track_objects(queue, source, count_mode, camera_id):
                                             "camera_id": camera_id
                                         }
                                         increaseIN(data_x_in)
-                            # Hiển thị tổng số lượt đi trên khung hình
+                            # Hiển thị tổng số lượt đi trên khung hìnhs
             if count_mode == 1:
                 # Lấy chiều rộng của khung hình
                 frame_width = frame.shape[1]
