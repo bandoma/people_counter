@@ -5,10 +5,11 @@ from pymongo.mongo_client import MongoClient  # pip install pymongo
 from pymongo.server_api import ServerApi
 import threading
 import json
+
 client = MongoClient("mongodb://localhost:27017/", server_api=ServerApi("1"))
 mydb = client["counter"]
 mycol = mydb["in_train"]
-API_ENDPOINT = "http://127.0.0:3333/api/counter-data"
+API_ENDPOINT = "https://demnguoi.halovi.com.vn/api/counter-data"
 
 # The line `camera_id='camera_id'` is initializing a variable `camera_id` with the value
 # `'camera_id'`. This is the default value for the `camera_id` parameter in the functions `increaseIN`
@@ -65,9 +66,10 @@ def sendRequest():
             if dictionary.get("camera_id") == doc["camera_id"]:
                 dictionary["data"].append(
                     {
+                        "id": str(doc["_id"]),
                         "number_of_guest_in": doc["number_of_guest_in"],
                         "number_of_guest_out": doc["number_of_guest_out"],
-                        "time": doc['time']
+                        "time": doc["time"],
                     }
                 )
                 break
@@ -78,9 +80,10 @@ def sendRequest():
                     "time": time,
                     "data": [
                         {
+                            "id": str(doc["_id"]),
                             "number_of_guest_in": doc["number_of_guest_in"],
                             "number_of_guest_out": doc["number_of_guest_out"],
-                            "time": doc['time']
+                            "time": doc["time"],
                         }
                     ],
                 }
@@ -106,11 +109,14 @@ def load_config():
         config = json.load(config_file)
     return config
 
-config=load_config()
+
+config = load_config()
+
 
 def send_requests_interval():
     sendRequest()
     threading.Timer(config["timeAPI"]["time_api"], send_requests_interval).start()
+
 
 if __name__ == "__main__":
     send_requests_interval()
