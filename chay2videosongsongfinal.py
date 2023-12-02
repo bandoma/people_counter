@@ -224,7 +224,12 @@ def track_objects(queue, source, count_mode, camera_id):
                 # threads.append(Thread(target=copy_to_usb, args=(output_folder,output_folder_original)))
                 # threads[-1].start()
             # Cập nhật thông tin về các đối tượng trong vùng quan tâm và đếm người đi vào và đi ra
-            ######################### THUẬT TOÁN BẮT ĐẦU TỪ ĐÂY ###############################
+
+            
+            
+            
+            
+            
             objects_in_roi = []
             for obj in tracked_objects:
                 xmin, ymin, xmax, ymax, object_id = obj
@@ -303,7 +308,17 @@ def track_objects(queue, source, count_mode, camera_id):
                         #         if end_x < 100:
                         #             right_to_left_count += 1
                         #     print(f"ID {object_id_to_remove} {direction}: {removed_object_info}")
-                        ################ KẾT THÚC ##################
+
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
                         if distance_x >= threshold:
                             if config["camera_config1"][source]["IN"] == "right-left":
                                 direction = "vao" if start_x > end_x else "ra"
