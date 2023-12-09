@@ -5,11 +5,28 @@ from pymongo.mongo_client import MongoClient  # pip install pymongo
 from pymongo.server_api import ServerApi
 import threading
 import json
+import logging
 
 client = MongoClient("mongodb://localhost:27017/", server_api=ServerApi("1"))
 mydb = client["counter"]
 mycol = mydb["in_train"]
 API_ENDPOINT = "https://demnguoi.halovi.com.vn/api/counter-data"
+
+log_format = "%(asctime)s - %(levelname)s - %(message)s"
+logging.basicConfig(filemode="a", format=log_format, level=logging.DEBUG)
+
+
+# Create a FileHandler with a dynamic file name based on the current date
+log_file_name = datetime.now().strftime("log_%Y-%m-%d.log")
+file_handler = logging.FileHandler(log_file_name)
+
+# Set the formatter for the FileHandler
+formatter = logging.Formatter(log_format)
+file_handler.setFormatter(formatter)
+
+# Add the FileHandler to the logger
+logger = logging.getLogger()
+logger.addHandler(file_handler)
 
 # The line `camera_id='camera_id'` is initializing a variable `camera_id` with the value
 # `'camera_id'`. This is the default value for the `camera_id` parameter in the functions `increaseIN`
@@ -92,14 +109,21 @@ def sendRequest():
     if len(data) > 0:
         for body in data:
             print(body)
+            logger.info(time)
+            logger.info(body)
             try:
                 res = requests.post(url=API_ENDPOINT, json=body)
                 if res.status_code == 200:
                     deleteData(body["camera_id"], time)
                     print("SUCCESS")
+                    logger.info("SUCCESS")
                 else:
+                    logger.info(res.content)
+                    logger.info("FAIL")
                     print("FAIL")
+                    print(res.content)
             except requests.exceptions.RequestException as e:
+                logger.error(e)
                 print(e)
                 return "UNKNOWN_ERROR"
 
