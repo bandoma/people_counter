@@ -1,0 +1,267 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+import cv2
+import torch
+import numpy as np
+from sort import Sort
+import pathlib
+import time
+from multiprocessing import Process, Queue
+from imutils.video import VideoStream
+from mongoFunc import send_requests_interval, increaseIN, increaseOUT
+temp = pathlib.PosixPath
+pathlib.PosixPath = pathlib.WindowsPath
+import json
+import datetime
+import threading
+
+new_width, new_height = 320, 240 #dọc, ngang
+
+output_folder = "output_videos"
+os.makedirs(output_folder, exist_ok=True)
+
+output_folder_original = "output_videos_original"
+os.makedirs(output_folder_original, exist_ok=True)
+def load_config():
+    with open("config.json", "r") as config_file:
+        config = json.load(config_file)
+    return config
+
+config=load_config()
+camera_ip_top = "192.168.1.120"
+# camera_ip_bottom = "192.168.0.65"
+
+#Cài đặt lưu video 
+config_video_output = {
+    "fps": 24
+}
+def detect_objects(queue, source):
+    path = 'bestn.pt'
+    model = torch.hub.load('ultralytics/yolov5', 'custom', path, force_reload=False)
+    # cap = cv2.VideoCapture(source)
+    # original_frame = None
+    vs = VideoStream(src=source).start()
+    while True:
+        if not vs.stream.isOpened():
+            print("Camera disconnected. Reconnecting...")
+            time.sleep(5)  # Wait for a few seconds before retrying
+        else:
+            print("Camera reconnected. Displaying video...")
+            frame = vs.read()
+            frame = cv2.resize(frame, (new_width, new_height))
+            original_frame = frame.copy()
+            img = frame[..., ::-1]
+            results = model(img)
+            bboxes = results.xyxy[0][:, :4].cpu().numpy()
+            scores = results.xyxy[0][:, 4].cpu().numpy()
+            for bbox, score in zip(bboxes, scores):
+                x_min, y_min, x_max, y_max = map(int, bbox)
+                cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0, 255, 0), 3)
+                label_text = f"{score:.2f}"
+                cv2.putText(frame, label_text, (x_min, y_max + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0),3)
+            # cv2.imshow("detection", frame)
+            #cv2.imshow("original_frame", original_frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+            queue.put((original_frame, bboxes, scores))
+
+    # Giải phóng tài nguyên
+    # cap.release()
+    cv2.destroyAllWindows()
+    vs.stop()
+
+def track_objects(queue, source,rtsp, count_mode, camera_id):
+    tracker = Sort(100, 1, 0.1)
+    object_data = {}
+    y_center_threshold = 70
+    show_imshow = True
+    video_flag = False
+    video_start_time = datetime.datetime.now()
+    ra = 0
+    vao = 0
+    result = None
+    result_original = None
+    size=(new_width,new_height)
+    # fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    # out = cv2.VideoWriter(save_path, fourcc, 20.0, (640, 640))
+    # save = True
+    while True:
+        frame, bboxes, scores = queue.get()
+        if frame is None:
+            break
+        if result_original is not None:
+            result_original.write(frame)
+        # tracked_objects = mot_tracker.update(valid_boxes)
+        current_date = datetime.datetime.now().strftime("%d-%m-%Y")
+        current_camera = camera_id
+
+        output_folder_date = os.path.join(output_folder, current_date, current_camera)
+        os.makedirs(output_folder_date, exist_ok=True)
+        # Đường dẫn tới video
+        video_folder_date = os.path.join(output_folder_date)
+        os.makedirs(video_folder_date, exist_ok=True)
+
+        output_folder_date_original = os.path.join(output_folder_original, current_date, current_camera)
+        os.makedirs(output_folder_date_original, exist_ok=True)
+        # Tạo thư mục cho video theo ngày
+        video_folder_date_original = os.path.join(output_folder_date_original)
+        os.makedirs(video_folder_date_original, exist_ok=True)
+
+        # Ghi khung hình vào video
+        detections = [{'bbox': bbox, 'score': score} for bbox, score in zip(bboxes, scores) if score > 0.6]
+        if detections:
+            dets = np.array([det['bbox'] for det in detections])
+            scores = np.array([det['score'] for det in detections])
+            trackers = tracker.update(dets)
+            # print(len(trackers))
+            if len(trackers) > 0 and video_flag == False:
+                now = datetime.datetime.now()
+                video_start_time = now
+                dt_string = now.strftime("%H-%M-%S")
+                video_path = os.path.join(
+                    video_folder_date, f"{dt_string}_{camera_id}.avi"
+                )
+                result = cv2.VideoWriter(
+                    video_path, cv2.VideoWriter_fourcc(*"MJPG"), config_video_output['fps'], size
+                )
+                video_flag = True
+                # # Đường dẫn tới video
+                video_path_original = os.path.join(
+                    video_folder_date_original, f"{dt_string}_{camera_id}.avi"
+                )
+                # Khởi tạo result_original nếu chưa tồn tại
+                result_original = cv2.VideoWriter(
+                    video_path_original, cv2.VideoWriter_fourcc(*"MJPG"), config_video_output['fps'], size
+                )
+
+            if (
+
+                    video_flag == True
+                    and datetime.datetime.timestamp(datetime.datetime.now())
+                    - datetime.datetime.timestamp(video_start_time)
+                    > config["time"]["time_save"]
+
+            ):
+                
+                result.release()
+                result_original.release()
+                result = None
+                result_original = None
+                video_flag = False
+            for i, (x_min, y_min, x_max, y_max, object_id) in enumerate(trackers):
+                x_min, y_min, x_max, y_max, object_id = map(int, (x_min, y_min, x_max, y_max, object_id))
+                center_x = (x_min + x_max) // 2
+                center_y = (y_min + y_max) // 2
+                if object_id not in object_data:
+                    object_data[object_id] = {'y_centers': [center_y], 'last_seen': time.time()}
+
+                object_data[object_id]['y_centers'].append(center_y)
+                object_data[object_id]['last_seen'] = time.time()
+                cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0, 255, 0), 3)
+                cv2.circle(frame, (center_x, center_y), 5, (255, 0, 0), -1)
+                label_text = f"ID:{object_id},{scores[i]:.2f}"
+                cv2.putText(frame, label_text, (x_min, y_max + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 3)
+        for object_id, data in list(object_data.items()):
+            if time.time() - data['last_seen'] > 1:
+                print(f"P {object_id} disappeared: {data['y_centers']}")
+                print(len(data['y_centers']))
+                print(data['y_centers'][0] - data['y_centers'][-1])
+                error = data['y_centers'][0] - data['y_centers'][-1]
+                if len(data['y_centers']) > 5 and abs(error) > y_center_threshold:
+                    # print("duoc dem ", object_id)
+                    if error > 0:
+                        vao += 1
+                        data_x_in = {
+                            "camera_id": camera_id
+                        }
+                        increaseIN(data_x_in)
+                    else:
+                        ra += 1
+                        data_x_out = {
+                            "camera_id": camera_id
+                        }
+                        increaseOUT(data_x_out)
+                del object_data[object_id]
+        if count_mode==0:
+            cv2.putText(frame, f"Enter: {vao}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 255), 2)
+            cv2.putText(frame, f"Exit: {ra}", (10, new_height-20), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 255), 2)
+        if result is not None:
+            result.write(frame)
+        if show_imshow:
+            cv2.imshow(camera_id, frame)
+        # Nhấn 'q' để thoát khỏi vòng lặp
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    cv2.destroyAllWindows()
+    # vs.stop()
+def delete_old_videos(output_folder,output_folder_original):
+    while True:
+        try:
+            current_time = datetime.datetime.now()
+            output_folder_path = pathlib.Path(output_folder)
+            for date_folder in output_folder_path.iterdir():
+                    if date_folder.is_dir():
+                        for camera_folder in date_folder.iterdir():
+                            if camera_folder.is_dir():
+                                for file_path in camera_folder.iterdir():
+                                    if file_path.is_file():
+                                        file_creation_time = datetime.datetime.fromtimestamp(
+                                            file_path.stat().st_ctime
+                                        )
+                                        time_difference = current_time - file_creation_time
+                                        if time_difference.total_seconds() > config["time"]["time_delete"]:
+                                            parts = list(file_path.parts)
+                                            parts[0]=output_folder_original
+                                            original=os.path.join(*parts)
+                                            file_path.unlink()
+                                            pathlib.Path(original).unlink()
+                                              # Xóa tệp tin
+                                            print(f"Deleted old video: {file_path.name}")
+
+                                # Kiểm tra xem thư mục camera có trống không
+                                if not list(camera_folder.iterdir()):
+                                    camera_folder.rmdir()  # Xóa thư mục camera
+                                    print(f"Deleted camera folder: {camera_folder.name}")
+
+                        # Kiểm tra xem thư mục date có trống không sau khi xóa video
+                        if not list(date_folder.iterdir()):
+                            date_folder.rmdir()  # Xóa thư mục date
+                            print(f"Deleted date folder: {date_folder.name}")
+        except Exception as e:
+            print("Error: ", e)
+if __name__ == '__main__':
+    # Tạo Queue để trao đổi dữ liệu giữa các tiến trình
+    queue1 = Queue()
+    queue2 = Queue()
+    vitri = {
+        "left_right": 1,
+        "top-bottom": 0
+    }
+    rtsp1 = config["camera_config2"][camera_ip_top]["source"]
+    # rtsp2= config["camera_config2"][camera_ip_bottom]["source"]
+
+    detect_process1 = threading.Thread(target=detect_objects, args=(queue1, rtsp1))
+    # detect_process2 = threading.Thread(target=detect_objects, args=(queue2,  rtsp2))
+
+    detect_process1.start()
+    # detect_process2.start()
+
+    track_process1 = Process(target=track_objects, args=(queue1, camera_ip_top, rtsp1, vitri["top-bottom"], "camera1"))
+    # track_process2 = Process(target=track_objects, args=(queue2, camera_ip_bottom,rtsp2, vitri["top-bottom"], "camera2"))
+
+    track_process1.start()
+    # track_process2.start()
+
+    delete_process = threading.Thread(target=delete_old_videos, args=(output_folder, output_folder_original))
+    # delete_process.start()
+
+    detect_process1.join()
+    # detect_process2.join()
+    # delete_process.join()
+
+    track_process1.join()
+    # track_process2.join()
+    # Đánh dấu kết thúc cho tiến trình theo dõi
+    queue1.put((None, None, None))
+    queue2.put((None, None, None))
+
