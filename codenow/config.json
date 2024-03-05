@@ -1,0 +1,87 @@
+{
+  "_comment": "camera",
+
+  "camera_config1": {
+   "192.168.1.120": {
+      "source": "rtsp://admin:Kingkem2@192.168.1.120:554/11",
+      "IN": "right-left",
+      "OUT": "left-right",
+      "roi": {
+        "new_width": 320,
+        "new_height": 240
+      }
+    },
+     "192.168.1.65":{ 
+      "source":0,
+      "IN": "left-right",
+      "OUT": "right-left",
+      "roi": {
+        "new_width": 320,
+        "new_height": 240
+      }
+    }
+  },
+  "time": {
+    "time_save": 120,
+    "time_delete": 432000
+  },
+  "camera_config2": {
+    "192.168.1.120": {
+      "source": "rtsp://admin:Kingkem2@192.168.1.120:554/11",
+      "IN": "top-bottom",
+      "OUT": "bottom-top",
+      "roi": {
+        "new_width": 320,
+        "new_height": 240
+      },
+      "lines": [
+        [
+          253,
+          70
+        ],
+        [
+          500,
+          100
+        ],
+        [
+          514,
+          380
+        ],
+        [
+          101,
+          380
+        ]
+      ]
+    },
+    "0": {
+      "source": "test5.avi",
+      "IN": "top-bottom",
+      "OUT": "bottom-top",
+      "roi": {
+        "new_width": 320,
+        "new_height": 240
+      },
+      "lines": [
+        [
+          200,
+          170
+        ],
+        [
+          450,
+          20
+        ],
+        [
+          420,
+          480
+        ],
+        [
+          51,
+          480
+        ]
+      ]
+    }
+    },
+    "timeAPI": {
+      "time_api": 10
+    }
+  }
